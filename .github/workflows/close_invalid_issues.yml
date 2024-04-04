@@ -1,24 +1,39 @@
-name: Close Invalid Issues
+import { Octokit } from "@octokit/rest";
 
-on:
-  workflow_dispatch:
+// Créez une instance d'Octokit
+const octokit = new Octokit({
+  auth: process.env.ACTION_TOKEN
+});
 
-jobs:
-  close_invalid_issues:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
+const owner = 'gologic-ca'; // Remplacez par le propriétaire du dépôt
+const repo = 'projet-demo'; // Remplacez par le nom du dépôt
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v2
-      with:
-        node-version: '18'
+async function closeInvalidIssues() {
+  try {
+    // Obtenez tous les problèmes du dépôt
+    const { data: issues } = await octokit.issues.listForRepo({
+      owner,
+      repo,
+      state: 'open',
+    });
 
-    - name: Install dependencies
-      run: npm install
+    // Parcourez chaque problème
+    for (const issue of issues) {
+      // Vérifiez si le problème a un label "invalid"
+      if (issue.labels.some(label => label.name === 'invalid')) {
+        // Fermez le problème
+        await octokit.issues.update({
+          owner,
+          repo,
+          issue_number: issue.number,
+          state: 'closed',
+        });
+      }
+    }
+  } catch (error) {
+    console.error(error);
+  }
+}
 
-    - name: Close invalid issues
-      run: npx ts-node .github/actions/close_invalid_issues.ts
-      env:
-        ACTION_TOKEN: ${{ secrets.ACTION_TOKEN }}
+// Exécutez la fonction
+closeInvalidIssues();
