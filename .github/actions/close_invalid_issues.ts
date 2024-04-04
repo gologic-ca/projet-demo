@@ -1,40 +1,39 @@
-import { Octokit } from "octokit";
+import { Octokit } from "@octokit/rest";
 
+// Créez une instance d'Octokit
 const octokit = new Octokit({
-  auth: process.env.ACTION_TOKEN,
+  auth: process.env.ACTION_TOKEN, // Utilisez la variable d'environnement ACTION_TOKEN
 });
+
+const owner = 'gologic-ca'; // Remplacez par le propriétaire du dépôt
+const repo = 'projet-demo'; // Remplacez par le nom du dépôt
 
 async function closeInvalidIssues() {
   try {
-    const owner = 'gologic-ca'; 
-    const repo = 'projet-demo'; 
-
-    console.log('Entering closeInvalidIssues method');
-    console.log(`Owner: ${owner}`);
-    console.log(`Repo: ${repo}`);
-
-    const invalidIssues = await octokit.paginate(octokit.rest.issues.listForRepo, {
+    // Obtenez tous les problèmes du dépôt
+    const { data: issues } = await octokit.issues.listForRepo({
       owner,
       repo,
       state: 'open',
-      labels: 'invalid'
     });
 
-    console.log(`Found ${invalidIssues.length} open issues`);
-
-    for (const issue of invalidIssues) {
-      console.log(`Closing issue #${issue.number}`);
-      await octokit.rest.issues.update({
-        owner,
-        repo,
-        issue_number: issue.number,
-        state: 'closed',
-      });
-      console.log(`Issue #${issue.number} closed`);
+    // Parcourez chaque problème
+    for (const issue of issues) {
+      // Vérifiez si le problème a un label "invalid"
+      if (issue.labels.some(label => label.name === 'invalid')) {
+        // Fermez le problème
+        await octokit.issues.update({
+          owner,
+          repo,
+          issue_number: issue.number,
+          state: 'closed',
+        });
+      }
     }
   } catch (error) {
-    console.error('An error occurred:', error);
+    console.error(error);
   }
 }
 
-closeInvalidIssues().catch(console.error);
+// Exécutez la fonction
+closeInvalidIssues();
